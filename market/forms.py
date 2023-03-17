@@ -57,12 +57,6 @@ class ProductForm(forms.ModelForm):
             'price': 'Price'
         }
 
-    def clean_name(self):
-        name = self.cleaned_data.get('name')
-        if Product.objects.filter(name=name).exists():
-            raise ValidationError('Product with this name already exists')
-        return name
-
 
 class ProductSearchForm(forms.Form):
     search = forms.CharField(max_length=100, required=False, label='Search by name')

@@ -1,13 +1,11 @@
-from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Q
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
-from django.views.generic import ListView, CreateView
+from django.urls import reverse, reverse_lazy
+from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from market.forms import ProductForm, ProductSearchForm
 from market.models import Product, CategoryChoice
 
 
-class IndexView(ListView):
+class ProductIndex(ListView):
     template_name = 'index.html'
     context_object_name = 'products'
     paginate_by = 10
@@ -41,7 +39,7 @@ class IndexView(ListView):
         return context
 
 
-class CategoryView(ListView):
+class CategoryIndex(ListView):
     template_name = 'products_by_category.html'
     context_object_name = 'products'
     paginate_by = 10
@@ -80,7 +78,7 @@ class CategoryView(ListView):
         return context
 
 
-class AddView(CreateView):
+class ProductAdd(CreateView):
     template_name = 'product_create.html'
     model = Product
     form_class = ProductForm
@@ -89,42 +87,22 @@ class AddView(CreateView):
         return reverse('product_detail', kwargs={'pk': self.object.pk})
 
 
-def detailed_view(request: WSGIRequest, pk):
-    product = get_object_or_404(Product, pk=pk)
-    return render(request, 'product_detail.html', context={'product': product, 'categories': CategoryChoice.choices})
+class ProductDetail(DetailView):
+    template_name = 'product_detail.html'
+    model = Product
 
 
-def update_view(request: WSGIRequest, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            product.name = form.clean_name()
-            product.description = form.cleaned_data['description']
-            product.image = form.cleaned_data['image']
-            product.category = form.cleaned_data['category']
-            product.quantity = form.cleaned_data['quantity']
-            product.price = form.cleaned_data['price']
-            product.save()
-            return redirect('product_detail', pk=product.pk)
-    else:
-        form = ProductForm(initial={
-            'name': product.name,
-            'description': product.description,
-            'image': product.image,
-            'category': product.category,
-            'quantity': product.quantity,
-            'price': product.price
-        })
-    return render(request, 'product_update.html', {'form': form, 'product': product})
+class ProductUpdate(UpdateView):
+    template_name = 'product_update.html'
+    form_class = ProductForm
+    model = Product
+
+    def get_success_url(self):
+        return reverse('product_detail', kwargs={'pk': self.object.pk})
 
 
-def delete_view(request: WSGIRequest, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        product.delete()
-        return redirect('index')
-    context = {
-        'product': product,
-    }
-    return render(request, 'product_delete.html', context)
+class ProductDelete(DeleteView):
+    template_name = 'product_delete.html'
+    model = Product
+    success_url = reverse_lazy('index')
+
