@@ -4,8 +4,8 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
-from market.forms import ProductForm, ProductSearchForm
-from market.models import Product, CategoryChoice, Cart
+from market.forms import ProductForm, ProductSearchForm, OrderForm
+from market.models import Product, CategoryChoice, Cart, OrderItem
 
 
 class ProductIndex(ListView):
@@ -133,7 +133,26 @@ class CartView(View):
     def get(self, request):
         cart = Cart.objects.all()
         total = sum(item.product.price * item.quantity for item in cart)
-        return render(request, 'cart.html', {'cart': cart, 'total': total})
+        form = OrderForm()
+        return render(request, 'cart.html', {'cart': cart, 'total': total, 'form': form})
+
+    def post(self, request):
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.save()
+
+            cart = Cart.objects.all()
+            for item in cart:
+                order_item = OrderItem(order=order, product=item.product, quantity=item.quantity)
+                order_item.save()
+                item.delete()
+
+            return redirect('index')
+        else:
+            cart = Cart.objects.all()
+            total = sum(item.product.price * item.quantity for item in cart)
+            return render(request, 'cart.html', {'cart': cart, 'total': total, 'form': form})
 
 
 class RemoveFromCartView(View):
@@ -141,3 +160,4 @@ class RemoveFromCartView(View):
         item = get_object_or_404(Cart, pk=item_pk)
         item.delete()
         return redirect('cart')
+

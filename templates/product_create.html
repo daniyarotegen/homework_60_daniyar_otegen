@@ -7,7 +7,7 @@
     <h2 style="margin-top: 1rem">Add Product</h2>
     <div class="form">
         <form action="{% url 'product_add' %}" method="post">
-            {% include 'partial/product_form.html' with button_text='Add' %}
+            {% include 'partial/form.html' with button_text='Add' %}
         </form>
     </div>
 {% endblock %}

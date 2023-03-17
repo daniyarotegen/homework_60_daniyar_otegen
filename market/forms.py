@@ -1,6 +1,6 @@
 from django import forms
 from django.core.validators import BaseValidator, MinValueValidator
-from market.models import Product
+from market.models import Product, Order
 
 
 class CustomMaxValidator(BaseValidator):
@@ -59,3 +59,14 @@ class ProductForm(forms.ModelForm):
 
 class ProductSearchForm(forms.Form):
     search = forms.CharField(max_length=100, required=False, label='Search by name')
+
+
+class OrderForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['user_name', 'address', 'phone']
+        labels = {
+            'user_name': 'Name',
+            'address': 'Address',
+            'phone': 'Phone',
+        }
