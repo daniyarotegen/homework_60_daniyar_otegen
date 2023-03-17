@@ -1,67 +1,92 @@
 from django.core.handlers.wsgi import WSGIRequest
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.views.generic import ListView, CreateView
 from market.forms import ProductForm, ProductSearchForm
 from market.models import Product, CategoryChoice
 
 
-def index_view(request: WSGIRequest):
-    form = ProductSearchForm(request.GET)
-    categories = []
-    for category_value, category_label in CategoryChoice.choices:
-        products_in_category = Product.objects.filter(category=category_value, quantity__gt=0)
-        if products_in_category.exists():
-            categories.append((category_value, category_label))
-    if form.is_valid():
-        name = form.cleaned_data.get('name')
-        products = Product.objects.filter(name__icontains=name, quantity__gt=0).order_by('name')
-    else:
-        products = Product.objects.filter(quantity__gt=0).order_by('name')
+class IndexView(ListView):
+    template_name = 'index.html'
+    context_object_name = 'products'
+    paginate_by = 10
 
-    context = {
-        'products': products,
-        'form': form,
-        'categories': categories
-    }
+    def get_queryset(self):
+        form = ProductSearchForm(self.request.GET)
 
-    return render(request, 'index.html', context=context)
+        if form.is_valid():
+            search = form.cleaned_data.get('search')
+            products = Product.objects.filter(
+                Q(name__icontains=search) | Q(description__icontains=search),
+                quantity__gt=0
+            ).order_by('name')
+        else:
+            products = Product.objects.filter(quantity__gt=0).order_by('name')
 
+        return products
 
-def category_view(request: WSGIRequest, category_code):
-    form = ProductSearchForm(request.GET)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-    if form.is_valid():
-        name = form.cleaned_data.get('name')
-        products = Product.objects.filter(category=category_code, name__icontains=name, quantity__gt=0).order_by('name')
-    else:
-        products = Product.objects.filter(category=category_code, quantity__gt=0).order_by('name')
+        categories = []
+        for category_value, category_label in CategoryChoice.choices:
+            products_in_category = Product.objects.filter(category=category_value, quantity__gt=0)
+            if products_in_category.exists():
+                categories.append((category_value, category_label))
 
-    category_name = ''
-    for category_value, category_label in CategoryChoice.choices:
-        if category_value == category_code:
-            category_name = category_label
+        context['form'] = ProductSearchForm(self.request.GET)
+        context['categories'] = categories
 
-    context = {
-        'products': products,
-        'form': form,
-        'category_code': category_code,
-        'category_name': category_name,
-        'categories': CategoryChoice.choices
-    }
-    return render(request, 'products_by_category.html', context=context)
+        return context
 
 
-def add_view(request: WSGIRequest):
-    if request.method == 'GET':
-        form = ProductForm()
-        return render(request, 'product_create.html', {'form': form})
-    form = ProductForm(data=request.POST)
-    if not form.is_valid():
-        return render(request, 'product_create.html', context={
-            'form': form
-        })
-    else:
-        product = Product.objects.create(**form.cleaned_data)
-        return redirect('product_detail', pk=product.pk)
+class CategoryView(ListView):
+    template_name = 'products_by_category.html'
+    context_object_name = 'products'
+    paginate_by = 10
+
+    def get_queryset(self):
+        category_code = self.kwargs['category_code']
+        form = ProductSearchForm(self.request.GET)
+
+        if form.is_valid():
+            search = form.cleaned_data.get('search')
+            products = Product.objects.filter(
+                category=category_code,
+                quantity__gt=0
+            ).filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            ).order_by('name')
+        else:
+            products = Product.objects.filter(category=category_code, quantity__gt=0).order_by('name')
+
+        return products
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        category_code = self.kwargs['category_code']
+        category_name = ''
+
+        for category_value, category_label in CategoryChoice.choices:
+            if category_value == category_code:
+                category_name = category_label
+
+        context['form'] = ProductSearchForm(self.request.GET)
+        context['category_code'] = category_code
+        context['category_name'] = category_name
+        context['categories'] = CategoryChoice.choices
+
+        return context
+
+
+class AddView(CreateView):
+    template_name = 'product_create.html'
+    model = Product
+    form_class = ProductForm
+
+    def get_success_url(self):
+        return reverse('product_detail', kwargs={'pk': self.object.pk})
 
 
 def detailed_view(request: WSGIRequest, pk):

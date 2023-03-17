@@ -14,14 +14,12 @@
     </div>
 {% endblock %}
 {% block content %}
-    {% for category in categories %}
-        <h2 style="margin-top: 1.5rem">{{ category.1 }}</h2>
-        <div class="row row-cols-1 row-cols-md-5 g-4">
+        <div class="row row-cols-1 row-cols-md-5 g-4" style="margin-top: 1rem; margin-bottom: 1rem">
             {% for product in products %}
-                {% if category.0 == product.category %}
                     {% include 'partial/product_list.html' with products=products %}
-                {% endif %}
             {% endfor %}
         </div>
-    {% endfor %}
+{% if is_paginated %}
+{% include 'partial/pagination.html' %}
+{% endif %}
 {% endblock %}
