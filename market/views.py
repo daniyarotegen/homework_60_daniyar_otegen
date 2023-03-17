@@ -1,8 +1,11 @@
 from django.db.models import Q
+from django.http import HttpResponseBadRequest
+from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse, reverse_lazy
+from django.views import View
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from market.forms import ProductForm, ProductSearchForm
-from market.models import Product, CategoryChoice
+from market.models import Product, CategoryChoice, Cart
 
 
 class ProductIndex(ListView):
@@ -106,3 +109,35 @@ class ProductDelete(DeleteView):
     model = Product
     success_url = reverse_lazy('index')
 
+
+class AddToCart(View):
+    def post(self, request, product_pk):
+        product = get_object_or_404(Product, pk=product_pk)
+
+        if product.quantity == 0:
+            return HttpResponseBadRequest("Product is out of stock")
+
+        cart_item, created = Cart.objects.get_or_create(product=product)
+
+        if not created and cart_item.quantity < product.quantity:
+            cart_item.quantity += 1
+            cart_item.save()
+
+        return redirect('index')
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponseBadRequest("Invalid request method")
+
+
+class CartView(View):
+    def get(self, request):
+        cart = Cart.objects.all()
+        total = sum(item.product.price * item.quantity for item in cart)
+        return render(request, 'cart.html', {'cart': cart, 'total': total})
+
+
+class RemoveFromCartView(View):
+    def get(self, request, item_pk):
+        item = get_object_or_404(Cart, pk=item_pk)
+        item.delete()
+        return redirect('cart')

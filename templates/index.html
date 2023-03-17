@@ -14,7 +14,7 @@
     </div>
 {% endblock %}
 {% block content %}
-        <div class="row row-cols-1 row-cols-md-5 g-4" style="margin-top: 1rem; margin-bottom: 1rem">
+        <div class="row row-cols-1 row-cols-md-5 g-4" style="margin-top: 1rem">
             {% for product in products %}
                     {% include 'partial/product_list.html' with products=products %}
             {% endfor %}
